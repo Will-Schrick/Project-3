@@ -1,0 +1,29 @@
+/* ========== Image Styles ========== */
+img {
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.rounded-full {
+  border-radius: 50%;
+}
+
+/* ========== Text Overlay Styles ========== */
+.relative .absolute {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 5px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+/* ========== Header Styles ========== */
+header a {
+  color: #333;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+header a:hover {
+  color: #f97316;
+}
