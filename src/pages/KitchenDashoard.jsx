@@ -11,9 +11,6 @@ function KitchenDashboard() {
         <p className="text-lg">
           This is where the chef will see incoming orders.
         </p>
-        <div className="mt-20">
-          <LogoutButton />
-        </div>
       </div>
     </>
   );

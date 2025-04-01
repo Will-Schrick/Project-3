@@ -27,3 +27,8 @@ header a {
 header a:hover {
   color: #f97316;
 }
+
+/* Hide checkmark icons from shadcn/ui Select dropdowns */
+[data-select-item][data-state='checked'] svg {
+  display: none !important;
+}
