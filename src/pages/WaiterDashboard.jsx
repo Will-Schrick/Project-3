@@ -178,7 +178,6 @@ function WaiterDashboard() {
           <div className="text-center mb-4">
             <Button
               variant="destructive"
-              size="lg"
               onClick={handleSubmit}
               className="px-8"
             >
