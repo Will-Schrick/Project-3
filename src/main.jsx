@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 //import React from 'react';
 import App from './App.jsx';
 import { AuthProvider } from './auth/AuthContext.jsx';
-import './styles/main.css';
+import './styles/Main.css';
 import './index.css';
 
 createRoot(document.getElementById('root')).render(
