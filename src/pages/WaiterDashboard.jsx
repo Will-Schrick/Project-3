@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
-import LogoutButton from '../components/LogoutButton';
 import { db } from '../firebase/firebaseConfig';
 import {
   collection,
@@ -10,12 +9,10 @@ import {
   doc,
   query,
   where,
-  getDoc,
 } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectTrigger,
@@ -23,6 +20,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
+import { Link } from 'react-router-dom';
 
 function WaiterDashboard() {
   const [tables, setTables] = useState([]);
@@ -40,14 +38,11 @@ function WaiterDashboard() {
 
   useEffect(() => {
     const fetchTables = async () => {
-      const allTables = await getDocs(collection(db, 'Tables'));
-      const data = allTables.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setTables(
-        data.filter((t) => !t.IsOccupied).sort((a, b) => a.Number - b.Number)
-      );
-      setOccupiedTables(
-        data.filter((t) => t.IsOccupied).sort((a, b) => a.Number - b.Number)
-      );
+      const snapshot = await getDocs(collection(db, 'Tables'));
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const sortedData = data.sort((a, b) => a.Number - b.Number);
+      setTables(sortedData.filter((t) => !t.IsOccupied));
+      setOccupiedTables(sortedData.filter((t) => t.IsOccupied));
     };
     fetchTables();
   }, []);
@@ -55,8 +50,7 @@ function WaiterDashboard() {
   useEffect(() => {
     const fetchProducts = async () => {
       const snapshot = await getDocs(collection(db, 'Products'));
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setProducts(data);
+      setProducts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     };
     fetchProducts();
   }, []);
@@ -73,26 +67,27 @@ function WaiterDashboard() {
   }, []);
 
   const filteredProducts = products.filter(
-    (product) => product.Category === selectedCategory
+    (p) => p.Category === selectedCategory
   );
 
   const handleAddItem = () => {
     if (!selectedProduct || quantity < 1) return;
     const product = products.find((p) => p.id === selectedProduct);
-    const item = {
+    const newItem = {
       ProductID: product.id,
       Name: product.Name,
       Quantity: quantity,
       Price: product.Price,
       Notes: notes,
+      Prepared: false,
     };
     if (editIndex !== null) {
       const updated = [...orderItems];
-      updated[editIndex] = item;
+      updated[editIndex] = newItem;
       setOrderItems(updated);
       setEditIndex(null);
     } else {
-      setOrderItems((prev) => [...prev, item]);
+      setOrderItems((prev) => [...prev, newItem]);
     }
     setSelectedProduct('');
     setQuantity(1);
@@ -112,31 +107,24 @@ function WaiterDashboard() {
   };
 
   const handleLoadExistingOrder = async (tableId) => {
-    const q = query(
-      collection(db, 'Orders'),
-      where('Table', '==', tableId),
-      where('Status', '==', 'Pending')
-    );
+    const q = query(collection(db, 'Orders'), where('Table', '==', tableId));
     const snapshot = await getDocs(q);
-    const orders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const orders = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => b.CreatedAt?.toDate() - a.CreatedAt?.toDate());
+
     if (orders.length > 0) {
-      const order = orders[orders.length - 1];
-      setActiveOrderId(order.id);
-      setSelectedTable(order.Table);
-      setOrderItems(order.Products);
+      const latest = orders[0];
+      setActiveOrderId(latest.id);
+      setSelectedTable(latest.Table);
+      setOrderItems(latest.Products);
     } else {
-      alert('No open order found for this table.');
+      alert('No order found for this table.');
     }
   };
 
   const handleSubmit = async () => {
     if (!selectedTable || orderItems.length === 0) return;
-
-    // Get table name before submitting
-    const tableDoc = await getDoc(doc(db, 'Tables', selectedTable));
-    const tableName = tableDoc.exists()
-      ? tableDoc.data().Name
-      : 'Unknown Table';
 
     const total = orderItems.reduce(
       (sum, item) => sum + item.Price * item.Quantity,
@@ -144,42 +132,48 @@ function WaiterDashboard() {
     );
 
     const orderData = {
-      Table: tableName, // ✅ Submit the table name, not the ID
+      Table: selectedTable,
       Products: orderItems,
       Status: 'Pending',
       CreatedAt: new Date(),
       Total: `€${total.toFixed(2)}`,
     };
 
-    if (activeOrderId) {
-      await updateDoc(doc(db, 'Orders', activeOrderId), orderData);
-    } else {
-      const orderRef = await addDoc(collection(db, 'Orders'), orderData);
-      await updateDoc(doc(db, 'Tables', selectedTable), {
-        IsOccupied: true,
-        Orders: [orderRef.id],
-      });
-    }
+    try {
+      if (activeOrderId) {
+        await updateDoc(doc(db, 'Orders', activeOrderId), orderData);
+        alert('Order updated!');
+      } else {
+        const orderRef = await addDoc(collection(db, 'Orders'), orderData);
+        await updateDoc(doc(db, 'Tables', selectedTable), {
+          IsOccupied: true,
+          Orders: [orderRef.id],
+        });
+        alert('Order submitted!');
+      }
 
-    setSelectedCategory(null);
-    setSelectedProduct('');
-    setQuantity(1);
-    setNotes('');
-    setOrderItems([]);
-    setActiveOrderId(null);
-    alert('Order submitted!');
+      setSelectedCategory(null);
+      setSelectedProduct('');
+      setQuantity(1);
+      setNotes('');
+      setOrderItems([]);
+      setActiveOrderId(null);
+    } catch (error) {
+      console.error('Error submitting order:', error);
+      alert('Failed to submit order. Please try again.');
+    }
   };
 
   return (
     <>
       <Navbar />
-      <div className="pt-40 max-w-2xl mx-auto p-4 relative">
+      <div className="pt-40 max-w-2xl mx-auto p-4">
         {orderItems.length > 0 && (
           <div className="text-center mb-4">
             <Button
               variant="destructive"
               onClick={handleSubmit}
-              className="px-8"
+              className="px-6"
             >
               {activeOrderId ? 'Update Order' : 'Submit Order'}
             </Button>
@@ -189,26 +183,19 @@ function WaiterDashboard() {
         <h1 className="text-4xl font-bold mb-6 text-center">
           Waiter Dashboard
         </h1>
+        <div></div>
+
+        <Link to="/paybill">
+          <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+            Pay Bill / Close Table
+          </Button>
+        </Link>
 
         <form className="space-y-6">
-          <div>
-            <Label>Edit Existing Table Order</Label>
-            <Select onValueChange={handleLoadExistingOrder}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select occupied table" />
-              </SelectTrigger>
-              <SelectContent>
-                {occupiedTables.map((table) => (
-                  <SelectItem key={table.id} value={table.id}>
-                    {table.Name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div></div>
 
           <div>
-            <Label>New Table</Label>
+            <Label>Place Order at a New Table</Label>
             <Select value={selectedTable} onValueChange={setSelectedTable}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a table" />
@@ -227,7 +214,7 @@ function WaiterDashboard() {
             <Label>Category</Label>
             <Select
               value={selectedCategory?.toString() || ''}
-              onValueChange={(value) => setSelectedCategory(Number(value))}
+              onValueChange={(val) => setSelectedCategory(Number(val))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a category" />
@@ -249,9 +236,9 @@ function WaiterDashboard() {
                 <SelectValue placeholder="Select a product" />
               </SelectTrigger>
               <SelectContent>
-                {filteredProducts.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.Name} (€{product.Price})
+                {filteredProducts.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.Name} (€{p.Price})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -271,7 +258,6 @@ function WaiterDashboard() {
           <div>
             <Label>Notes</Label>
             <Input
-              type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes..."
@@ -287,18 +273,13 @@ function WaiterDashboard() {
           </Button>
 
           {orderItems.length > 0 && (
-            <div className="border p-4 rounded bg-gray-50">
+            <div className="border p-4 rounded bg-gray-100">
               <h3 className="font-bold mb-2">Order Items</h3>
               <ul className="space-y-2">
-                {orderItems.map((item, index) => (
-                  <li
-                    key={index}
-                    className="flex justify-between items-start gap-4"
-                  >
+                {orderItems.map((item, idx) => (
+                  <li key={idx} className="flex justify-between items-start">
                     <div>
-                      <p>
-                        {item.Name} × {item.Quantity}
-                      </p>
+                      {item.Name} × {item.Quantity}
                       {item.Notes && (
                         <p className="text-sm text-gray-600 italic">
                           {item.Notes}
@@ -307,18 +288,16 @@ function WaiterDashboard() {
                     </div>
                     <div className="flex gap-2">
                       <Button
-                        type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => handleEditItem(index)}
+                        onClick={() => handleEditItem(idx)}
                       >
                         Edit
                       </Button>
                       <Button
-                        type="button"
-                        variant="destructive"
                         size="sm"
-                        onClick={() => handleRemoveItem(index)}
+                        variant="destructive"
+                        onClick={() => handleRemoveItem(idx)}
                       >
                         Remove
                       </Button>

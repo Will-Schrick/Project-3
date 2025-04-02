@@ -5,6 +5,7 @@ import Menu from './pages/Menu';
 import About from './pages/About';
 import Location from './pages/Location';
 import NotFound from './pages/NotFound';
+import PayBill from './pages/PayBill';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import WaiterDashboard from './pages/WaiterDashboard';
@@ -22,6 +23,7 @@ function App() {
         <Route path="/waiter" element={<WaiterDashboard />} />
         <Route path="/kitchen" element={<KitchenDashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/paybill" element={<PayBill />} />
         <Route path="*" element={<NotFound />} /> {/* 404 Page */}
       </Routes>
     </BrowserRouter>

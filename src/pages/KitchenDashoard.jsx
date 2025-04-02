@@ -1,90 +1,142 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase/firebaseConfig';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  updateDoc,
+  doc,
+  getDoc,
+} from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 
 function KitchenDashboard() {
   const [orders, setOrders] = useState([]);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [tablesMap, setTablesMap] = useState({});
 
   useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'Orders'), async (snapshot) => {
+      const ordersData = await Promise.all(
+        snapshot.docs.map(async (docSnap) => {
+          const order = { id: docSnap.id, ...docSnap.data() };
+          return order;
+        })
+      );
+      setOrders(
+        ordersData.sort((a, b) => a.CreatedAt?.toDate() - b.CreatedAt?.toDate())
+      );
+    });
+
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
     const fetchTables = async () => {
-      const snapshot = await getDocs(collection(db, 'Tables'));
-      const tableMap = {};
-      snapshot.forEach((doc) => {
+      const tablesSnapshot = await getDocs(collection(db, 'Tables'));
+      const tableData = {};
+      tablesSnapshot.docs.forEach((doc) => {
         const data = doc.data();
-        tableMap[data.Name] = data.Number;
+        tableData[doc.id] = data.Number;
       });
-      setTablesMap(tableMap);
+      setTablesMap(tableData);
     };
     fetchTables();
   }, []);
 
-  useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, 'Orders'),
-      (snapshot) => {
-        const data = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((order) => order.Status === 'Pending')
-          .sort((a, b) => a.CreatedAt?.toDate() - b.CreatedAt?.toDate());
-        setOrders(data);
-      },
-      (error) => console.error('Order snapshot error:', error)
-    );
-    return () => unsub();
-  }, []);
+  const markItemPrepared = async (orderId, index) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    const updatedProducts = [...order.Products];
+    updatedProducts[index].Prepared = true;
+
+    await updateDoc(doc(db, 'Orders', orderId), {
+      Products: updatedProducts,
+    });
+  };
+
+  const markOrderPrepared = async (orderId) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    const updatedProducts = order.Products.map((p) => ({
+      ...p,
+      Prepared: true,
+    }));
+    await updateDoc(doc(db, 'Orders', orderId), {
+      Products: updatedProducts,
+      Status: 'Completed',
+    });
+  };
+
+  const filteredOrders = orders.filter((order) =>
+    showCompleted ? order.Status === 'Completed' : order.Status !== 'Completed'
+  );
 
   return (
     <>
       <Navbar />
-      <div className="pt-32 px-4 max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-10">
-          Kitchen Dashboard
-        </h1>
+      <div className="pt-40 px-4 max-w-screen-2xl mx-auto">
+        <div className="mb-6 flex justify-center">
+          <Button
+            onClick={() => setShowCompleted(!showCompleted)}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+          >
+            {showCompleted ? 'Show Active Orders' : 'Show Completed Orders'}
+          </Button>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {orders.map((order) => (
+          {filteredOrders.map((order) => (
             <div
               key={order.id}
-              className="bg-white shadow rounded-lg p-4 border border-gray-200"
+              className="border rounded-xl p-4 shadow bg-white flex flex-col justify-between"
             >
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-medium">
-                  🧾 Order ID: <span className="text-gray-700">{order.id}</span>
-                </span>
-                <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                  Table: #{tablesMap[order.Table] || '...'}
-                </span>
-              </div>
-
-              <div className="space-y-3 mb-4">
-                {order.Products.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-start border-b pb-2"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {item.Name} × {item.Quantity}
-                      </p>
-                      {item.Notes && (
-                        <p className="text-sm italic text-gray-500">
-                          {item.Notes}
-                        </p>
+              <div>
+                <h2 className="text-lg font-semibold mb-2">
+                  Table: {tablesMap[order.Table] ?? 'Loading...'} — Order ID:{' '}
+                  {order.id}
+                </h2>
+                <ul className="space-y-2">
+                  {order.Products.map((product, index) => (
+                    <li
+                      key={index}
+                      className="p-2 rounded border flex justify-between items-center"
+                    >
+                      <div>
+                        <strong>
+                          {product.Quantity}× {product.Name}
+                        </strong>
+                        {product.Notes && (
+                          <p className="text-sm text-gray-600 italic">
+                            {product.Notes}
+                          </p>
+                        )}
+                      </div>
+                      {!product.Prepared && (
+                        <Button
+                          size="sm"
+                          onClick={() => markItemPrepared(order.id, index)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white"
+                        >
+                          Mark Prepared
+                        </Button>
                       )}
-                    </div>
-                    <Button className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-1">
-                      Mark Prepared
-                    </Button>
-                  </div>
-                ))}
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
-                Mark Order As Ready
-              </Button>
+              {!order.Products.every((p) => p.Prepared) ? null : (
+                <Button
+                  onClick={() => markOrderPrepared(order.id)}
+                  className="mt-4 bg-orange-500 hover:bg-orange-600 text-white"
+                >
+                  Mark Order Complete
+                </Button>
+              )}
             </div>
           ))}
         </div>
