@@ -18,14 +18,14 @@ function Home() {
       {/* ========== Two Videos Side-by-Side Under Nav Bar ========== */}
       <div className="grid grid-cols-2 gap-4 px-5 my-10">
         <video
-          src="/src/assets/video-home-1.mp4"
+          src="/video-home-1.mp4"
           autoPlay
           loop
           muted
           className="w-full h-[600px] object-cover rounded-lg shadow-md"
         />
         <video
-          src="/src/assets/video-home-2.mp4"
+          src="/video-home-2.mp4"
           autoPlay
           loop
           muted
@@ -45,7 +45,7 @@ function Home() {
         ].map((img, idx) => (
           <div className="relative" key={idx}>
             <img
-              src={`/src/assets/interior/${img}`}
+              src={`/interior/${img}`}
               alt={`Location ${idx + 1}`}
               className="w-full h-[450px] object-cover rounded-lg shadow-md"
             />
@@ -57,7 +57,7 @@ function Home() {
       <section className="text-center py-10 px-5 bg-white">
         <div className="max-w-5xl mx-auto grid grid-cols-2 gap-6 items-center">
           <img
-            src="/src/assets/brunch.jpg"
+            src="/brunch.jpg"
             alt="Brunch"
             className="w-full h-[400px] object-cover rounded-full shadow-md"
           />
@@ -100,7 +100,7 @@ function Home() {
             <div
               className="h-full bg-cover bg-center"
               style={{
-                backgroundImage: `url('/src/assets/carousel/${bg}')`,
+                backgroundImage: `url('/carousel/${bg}')`,
               }}
             ></div>
           </SwiperSlide>
