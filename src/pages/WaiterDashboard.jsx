@@ -1,5 +1,3 @@
-// Updated WaiterDashboard.jsx (with edit support for existing orders)
-
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase/firebaseConfig';
@@ -36,33 +34,44 @@ function WaiterDashboard() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
-  const [editIndex, setEditIndex] = useState(null);
 
+  // Fetch Tables and sort by Table Number (Lowest to Highest)
   useEffect(() => {
     const fetchTables = async () => {
       const snapshot = await getDocs(collection(db, 'Tables'));
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const sorted = data.sort((a, b) => a.Number - b.Number);
-      setTables(sorted);
+      const tablesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      const sortedTables = tablesData.sort((a, b) => a.Number - b.Number); // Sort tables by number (ascending)
+      setTables(sortedTables);
     };
     fetchTables();
   }, []);
 
+  // Fetch Products
   useEffect(() => {
     const fetchProducts = async () => {
       const snapshot = await getDocs(collection(db, 'Products'));
-      setProducts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      const productsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setProducts(productsData);
     };
     fetchProducts();
   }, []);
 
+  // Fetch Categories and sort by Category ID
   useEffect(() => {
     const fetchCategories = async () => {
       const snapshot = await getDocs(collection(db, 'Categories'));
-      const data = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .sort((a, b) => a.ID - b.ID);
-      setCategories(data);
+      const categoriesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      categoriesData.sort((a, b) => a.ID - b.ID); // Sort categories by ID
+      setCategories(categoriesData); // Set sorted categories
     };
     fetchCategories();
   }, []);
@@ -77,7 +86,7 @@ function WaiterDashboard() {
     const snapshot = await getDocs(q);
     const activeOrders = snapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((order) => order.Status !== 'Paid');
+      .filter((order) => order.Status !== 'Paid'); // Only include orders that are not paid
 
     setExistingOrders(activeOrders);
   };
@@ -91,48 +100,7 @@ function WaiterDashboard() {
     setOrderItems(order.Products);
   };
 
-  const filteredProducts = products.filter(
-    (p) => p.Category === selectedCategory
-  );
-
-  const handleAddItem = () => {
-    if (!selectedProduct || quantity < 1) return;
-    const product = products.find((p) => p.id === selectedProduct);
-    const newItem = {
-      ProductID: product.id,
-      Name: product.Name,
-      Quantity: quantity,
-      Price: product.Price,
-      Notes: notes,
-      Prepared: false,
-    };
-
-    if (editIndex !== null) {
-      const updated = [...orderItems];
-      updated[editIndex] = newItem;
-      setOrderItems(updated);
-      setEditIndex(null);
-    } else {
-      setOrderItems((prev) => [...prev, newItem]);
-    }
-
-    setSelectedProduct('');
-    setQuantity(1);
-    setNotes('');
-  };
-
-  const handleEditItem = (index) => {
-    const item = orderItems[index];
-    setSelectedProduct(item.ProductID);
-    setQuantity(item.Quantity);
-    setNotes(item.Notes);
-    setEditIndex(index);
-  };
-
-  const handleRemoveItem = (index) => {
-    setOrderItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
+  // Submit or update order
   const handleSubmit = async () => {
     if (!selectedTable || orderItems.length === 0) return;
 
@@ -153,27 +121,15 @@ function WaiterDashboard() {
       if (selectedOrderId) {
         // Update existing order
         await updateDoc(doc(db, 'Orders', selectedOrderId), orderData);
-        alert('Order updated!');
       } else {
         // Create new order
-        const orderRef = await addDoc(collection(db, 'Orders'), orderData);
-        await updateDoc(doc(db, 'Tables', selectedTable), {
-          IsOccupied: true,
-        });
-        alert('New order submitted!');
+        await addDoc(collection(db, 'Orders'), orderData);
+        await updateDoc(doc(db, 'Tables', selectedTable), { IsOccupied: true });
       }
-
-      // Reset
-      setSelectedCategory(null);
-      setSelectedProduct('');
-      setQuantity(1);
-      setNotes('');
       setOrderItems([]);
-      setSelectedOrderId('');
       handleTableSelection(selectedTable); // reload orders
     } catch (error) {
       console.error('Error submitting order:', error);
-      alert('Failed to submit order. Please try again.');
     }
   };
 
@@ -255,11 +211,14 @@ function WaiterDashboard() {
                 <SelectValue placeholder="Select a product" />
               </SelectTrigger>
               <SelectContent>
-                {filteredProducts.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.Name} (€{p.Price})
-                  </SelectItem>
-                ))}
+                {products
+                  .filter((p) => p.Category === selectedCategory)
+                  .sort((a, b) => a.Name.localeCompare(b.Name)) // Sort products alphabetically
+                  .map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.Name} (€{p.Price})
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -285,60 +244,12 @@ function WaiterDashboard() {
 
           <Button
             type="button"
-            onClick={handleAddItem}
+            onClick={handleSubmit}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white"
           >
-            {editIndex !== null ? 'Update Item' : 'Add Item to Cart'}
+            {selectedOrderId ? 'Update Order' : 'Submit Order'}
           </Button>
-
-          {orderItems.length > 0 && (
-            <div className="border p-4 rounded bg-gray-100">
-              <h3 className="font-bold mb-2">Order Items</h3>
-              <ul className="space-y-2">
-                {orderItems.map((item, idx) => (
-                  <li key={idx} className="flex justify-between items-start">
-                    <div>
-                      {item.Name} × {item.Quantity}
-                      {item.Notes && (
-                        <p className="text-sm text-gray-600 italic">
-                          {item.Notes}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditItem(idx)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleRemoveItem(idx)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </form>
-
-        {orderItems.length > 0 && (
-          <div className="text-center mt-6">
-            <Button
-              variant="destructive"
-              onClick={handleSubmit}
-              className="px-6"
-            >
-              {selectedOrderId ? 'Update Order' : 'Submit Order'}
-            </Button>
-          </div>
-        )}
       </div>
     </>
   );
