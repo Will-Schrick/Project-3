@@ -1,24 +1,35 @@
-// src/components/Navbar.jsx
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LogoutButton from './LogoutButton';
-import { useAuth } from '../auth/AuthContext'; // 👈 adjust path if needed
+import { useAuth } from '../auth/AuthContext';
 
 function Navbar() {
-  const { user } = useAuth(); // 👈 access auth status
+  const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="bg-white text-black py-4 shadow-md fixed top-0 w-full z-20">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-5">
-        <h1 className="text-5xl font-bold text-center flex-grow relative">
+      <div className="max-w-7xl mx-auto px-5 flex items-center justify-between">
+        {/* Logo */}
+        <h1 className="text-xl sm:text-3xl font-bold">
           <Link to="/">
-            <span className="inline-block px-10 py-[1.15rem] border-2 border-black rounded-full hover:text-orange-500 transition leading-tight">
+            <span className="inline-block px-4 py-2 border-2 border-black rounded-full hover:text-orange-500 transition leading-tight">
               DeliciousBites & Coffee
             </span>
           </Link>
         </h1>
 
-        {/* Navigation Links */}
-        <nav className="space-x-10 text-lg flex items-center justify-end">
+        {/* Hamburger Button */}
+        <button
+          className="sm:hidden text-3xl"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle Menu"
+        >
+          ☰
+        </button>
+
+        {/* Navigation Links - Desktop */}
+        <nav className="hidden sm:flex space-x-8 text-lg items-center">
           <Link to="/location" className="hover:text-orange-500 transition">
             Location
           </Link>
@@ -26,17 +37,34 @@ function Navbar() {
             Menu
           </Link>
           <Link to="/about" className="hover:text-orange-500 transition">
-            About Us
+            About
           </Link>
+          {user && <LogoutButton />}
+        </nav>
+      </div>
 
-          {/* 👇 Only show Logout if logged in */}
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="sm:hidden px-5 mt-2 space-y-2 text-center text-lg">
+          <Link
+            to="/location"
+            className="block hover:text-orange-500 transition"
+          >
+            Location
+          </Link>
+          <Link to="/menu" className="block hover:text-orange-500 transition">
+            Menu
+          </Link>
+          <Link to="/about" className="block hover:text-orange-500 transition">
+            About
+          </Link>
           {user && (
-            <div className="ml-6">
+            <div className="pt-2">
               <LogoutButton />
             </div>
           )}
-        </nav>
-      </div>
+        </div>
+      )}
     </header>
   );
 }

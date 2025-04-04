@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase/firebaseConfig';
-import { Link } from 'react-router-dom';
 import {
   doc,
   getDoc,
   updateDoc,
   collection,
   getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -17,130 +19,135 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label'; // Ensure Label is imported
-import { useNavigate } from 'react-router-dom'; // Use useNavigate instead of useHistory in react-router-dom v6+
+import { Label } from '@/components/ui/label';
 
 function PayBill() {
-  const [occupiedTables, setOccupiedTables] = useState([]); // Holds the list of tables
-  const [activeOrderId, setActiveOrderId] = useState(null);
+  const [occupiedTables, setOccupiedTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState('');
-  const [tableName, setTableName] = useState(''); // To store the table name
-  const [activeOrder, setActiveOrder] = useState(null);
+  const [tableName, setTableName] = useState('');
+  const [orders, setOrders] = useState([]);
 
-  const navigate = useNavigate(); // Access useNavigate hook to programmatically navigate
+  const navigate = useNavigate();
 
+  // Fetch all occupied tables
   useEffect(() => {
     const fetchOccupiedTables = async () => {
       const snapshot = await getDocs(collection(db, 'Tables'));
-      const tablesData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      // Sort tables by their number in ascending order
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setOccupiedTables(
-        tablesData
-          .filter((t) => t.IsOccupied)
-          .sort((a, b) => a.Number - b.Number)
+        data.filter((t) => t.IsOccupied).sort((a, b) => a.Number - b.Number)
       );
     };
     fetchOccupiedTables();
   }, []);
 
-  // Load existing order data based on table id (passed from props or other means)
-  const handleLoadOrder = async (tableId) => {
-    const ordersSnapshot = await getDocs(collection(db, 'Orders'));
-    const orders = ordersSnapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((order) => order.Table === tableId);
+  // Load all orders for selected table
+  const handleLoadOrdersForTable = async (tableId) => {
+    setSelectedTable(tableId);
 
-    if (orders.length > 0) {
-      const latest = orders[0];
-      setActiveOrderId(latest.id);
-      setSelectedTable(latest.Table);
-      setActiveOrder(latest);
-
-      // Fetch the table name
-      const tableSnapshot = await getDoc(doc(db, 'Tables', tableId));
-      setTableName(tableSnapshot.data().Name); // Store table name to display
-    } else {
-      alert('No order found for this table.');
+    const tableDoc = await getDoc(doc(db, 'Tables', tableId));
+    if (tableDoc.exists()) {
+      setTableName(tableDoc.data().Name);
     }
+
+    const q = query(collection(db, 'Orders'), where('Table', '==', tableId));
+    const snapshot = await getDocs(q);
+    const orders = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((order) => order.Status !== 'Paid'); // Only show unpaid orders
+
+    setOrders(orders);
   };
 
-  const handleGenerateBill = async () => {
-    if (!activeOrderId || !selectedTable) {
-      console.log(
-        'Exiting early due to missing activeOrderId or selectedTable'
-      );
-      return;
-    }
-
-    const confirmed = window.confirm(
-      'Mark this order as paid and free the table?'
-    );
-    if (!confirmed) return;
+  // Handle payment of one individual order
+  const handleMarkOrderPaid = async (orderId) => {
+    const confirm = window.confirm('Mark this order as paid?');
+    if (!confirm) return;
 
     try {
-      console.log('Closing bill for table:', tableName); // Use tableName here
-      await updateDoc(doc(db, 'Orders', activeOrderId), {
+      await updateDoc(doc(db, 'Orders', orderId), {
         Status: 'Paid',
       });
-      await updateDoc(doc(db, 'Tables', selectedTable), {
-        IsOccupied: false,
-      });
 
-      alert('Bill closed and table marked free!');
-      setActiveOrder(null); // Reset active order
-      setSelectedTable(''); // Reset selected table
-      setActiveOrderId(null);
-      setTableName('');
+      // Reload orders for the current table
+      await handleLoadOrdersForTable(selectedTable);
 
-      // Refresh the dropdown (resetting the occupied tables)
-      const snapshot = await getDocs(collection(db, 'Tables'));
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setOccupiedTables(data.filter((t) => t.IsOccupied)); // Reset the list of occupied tables
+      // Check if all orders for this table are paid now
+      const q = query(
+        collection(db, 'Orders'),
+        where('Table', '==', selectedTable)
+      );
+      const snapshot = await getDocs(q);
+      const allOrders = snapshot.docs.map((doc) => doc.data());
+      const hasUnpaid = allOrders.some((order) => order.Status !== 'Paid');
+
+      if (!hasUnpaid) {
+        await updateDoc(doc(db, 'Tables', selectedTable), {
+          IsOccupied: false,
+        });
+        alert(`✅ All orders paid. ${tableName} is now free!`);
+
+        // Refresh occupied table list
+        const tablesSnap = await getDocs(collection(db, 'Tables'));
+        const updated = tablesSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOccupiedTables(updated.filter((t) => t.IsOccupied));
+
+        setOrders([]);
+        setSelectedTable('');
+        setTableName('');
+      } else {
+        alert('Order marked paid. Some orders still unpaid.');
+      }
     } catch (error) {
-      console.error('Error generating bill:', error);
-      alert(`Failed to generate bill: ${error.message}`);
+      console.error('Error updating order:', error);
+      alert('Failed to mark order as paid.');
     }
-  };
-
-  // Go back to WaiterDashboard page when the button is clicked
-  const handleReturnToOrderPage = () => {
-    navigate('/waiter-dashboard'); // Navigate to WaiterDashboard page
   };
 
   return (
     <>
       <Navbar />
       <div className="pt-40 max-w-2xl mx-auto p-4">
-        {activeOrder && (
-          <div className="border p-4 rounded bg-white shadow mb-6">
-            <h2 className="text-xl font-bold mb-2">Bill for Table</h2>
-            <p className="mb-2">Table: {tableName}</p>
-            <ul className="mb-2">
-              {activeOrder.Products.map((item, i) => (
-                <li key={i}>
-                  {item.Name} × {item.Quantity} — €{item.Price * item.Quantity}
-                </li>
-              ))}
-            </ul>
-            <p className="font-bold">Total: {activeOrder.Total}</p>
-            <Button
-              className="mt-4 bg-orange-500 hover:bg-orange-600 text-white"
-              onClick={handleGenerateBill}
-            >
-              Close Bill
-            </Button>
+        {orders.length > 0 && (
+          <div className="space-y-6 mb-10">
+            <h2 className="text-xl font-bold">Unpaid Orders for {tableName}</h2>
+
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                className="border p-4 rounded shadow bg-white space-y-2"
+              >
+                <h3 className="font-semibold text-lg">Order ID: {order.id}</h3>
+                <ul>
+                  {order.Products.map((item, i) => (
+                    <li key={i}>
+                      {item.Name} × {item.Quantity} — €
+                      {(item.Price * item.Quantity).toFixed(2)}
+                    </li>
+                  ))}
+                </ul>
+                <p className="font-bold">Total: {order.Total}</p>
+                <Button
+                  className="bg-orange-500 hover:bg-orange-600 text-white mt-2"
+                  onClick={() => handleMarkOrderPaid(order.id)}
+                >
+                  Mark as Paid
+                </Button>
+              </div>
+            ))}
           </div>
         )}
 
         <form className="space-y-6">
           <div className="mt-10">
-            {' '}
-            {/* Added margin-top to push the dropdown further down */}
             <Label>Select Table to Pay Bill</Label>
-            <Select value={selectedTable} onValueChange={handleLoadOrder}>
+            <Select
+              value={selectedTable}
+              onValueChange={handleLoadOrdersForTable}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select occupied table" />
               </SelectTrigger>
@@ -159,7 +166,6 @@ function PayBill() {
           </div>
         </form>
 
-        {/* Return Button to go back to the Waiter Dashboard */}
         <div className="mt-6">
           <Link to="/waiter">
             <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">

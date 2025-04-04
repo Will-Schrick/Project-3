@@ -1,3 +1,5 @@
+// Updated WaiterDashboard.jsx (with edit support for existing orders)
+
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase/firebaseConfig';
@@ -24,25 +26,24 @@ import { Link } from 'react-router-dom';
 
 function WaiterDashboard() {
   const [tables, setTables] = useState([]);
-  const [occupiedTables, setOccupiedTables] = useState([]);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedTable, setSelectedTable] = useState('');
+  const [existingOrders, setExistingOrders] = useState([]);
+  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const [orderItems, setOrderItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
-  const [orderItems, setOrderItems] = useState([]);
   const [editIndex, setEditIndex] = useState(null);
-  const [activeOrderId, setActiveOrderId] = useState(null);
 
   useEffect(() => {
     const fetchTables = async () => {
       const snapshot = await getDocs(collection(db, 'Tables'));
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const sortedData = data.sort((a, b) => a.Number - b.Number);
-      setTables(sortedData.filter((t) => !t.IsOccupied));
-      setOccupiedTables(sortedData.filter((t) => t.IsOccupied));
+      const sorted = data.sort((a, b) => a.Number - b.Number);
+      setTables(sorted);
     };
     fetchTables();
   }, []);
@@ -66,6 +67,30 @@ function WaiterDashboard() {
     fetchCategories();
   }, []);
 
+  // 🔄 Load existing orders for a table
+  const handleTableSelection = async (tableId) => {
+    setSelectedTable(tableId);
+    setSelectedOrderId('');
+    setOrderItems([]);
+
+    const q = query(collection(db, 'Orders'), where('Table', '==', tableId));
+    const snapshot = await getDocs(q);
+    const activeOrders = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((order) => order.Status !== 'Paid');
+
+    setExistingOrders(activeOrders);
+  };
+
+  // 🧾 Load a selected order into the cart
+  const handleSelectOrder = (orderId) => {
+    const order = existingOrders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    setSelectedOrderId(orderId);
+    setOrderItems(order.Products);
+  };
+
   const filteredProducts = products.filter(
     (p) => p.Category === selectedCategory
   );
@@ -81,6 +106,7 @@ function WaiterDashboard() {
       Notes: notes,
       Prepared: false,
     };
+
     if (editIndex !== null) {
       const updated = [...orderItems];
       updated[editIndex] = newItem;
@@ -89,6 +115,7 @@ function WaiterDashboard() {
     } else {
       setOrderItems((prev) => [...prev, newItem]);
     }
+
     setSelectedProduct('');
     setQuantity(1);
     setNotes('');
@@ -104,23 +131,6 @@ function WaiterDashboard() {
 
   const handleRemoveItem = (index) => {
     setOrderItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleLoadExistingOrder = async (tableId) => {
-    const q = query(collection(db, 'Orders'), where('Table', '==', tableId));
-    const snapshot = await getDocs(q);
-    const orders = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .sort((a, b) => b.CreatedAt?.toDate() - a.CreatedAt?.toDate());
-
-    if (orders.length > 0) {
-      const latest = orders[0];
-      setActiveOrderId(latest.id);
-      setSelectedTable(latest.Table);
-      setOrderItems(latest.Products);
-    } else {
-      alert('No order found for this table.');
-    }
   };
 
   const handleSubmit = async () => {
@@ -140,24 +150,27 @@ function WaiterDashboard() {
     };
 
     try {
-      if (activeOrderId) {
-        await updateDoc(doc(db, 'Orders', activeOrderId), orderData);
+      if (selectedOrderId) {
+        // Update existing order
+        await updateDoc(doc(db, 'Orders', selectedOrderId), orderData);
         alert('Order updated!');
       } else {
+        // Create new order
         const orderRef = await addDoc(collection(db, 'Orders'), orderData);
         await updateDoc(doc(db, 'Tables', selectedTable), {
           IsOccupied: true,
-          Orders: [orderRef.id],
         });
-        alert('Order submitted!');
+        alert('New order submitted!');
       }
 
+      // Reset
       setSelectedCategory(null);
       setSelectedProduct('');
       setQuantity(1);
       setNotes('');
       setOrderItems([]);
-      setActiveOrderId(null);
+      setSelectedOrderId('');
+      handleTableSelection(selectedTable); // reload orders
     } catch (error) {
       console.error('Error submitting order:', error);
       alert('Failed to submit order. Please try again.');
@@ -168,35 +181,20 @@ function WaiterDashboard() {
     <>
       <Navbar />
       <div className="pt-40 max-w-2xl mx-auto p-4">
-        {orderItems.length > 0 && (
-          <div className="text-center mb-4">
-            <Button
-              variant="destructive"
-              onClick={handleSubmit}
-              className="px-6"
-            >
-              {activeOrderId ? 'Update Order' : 'Submit Order'}
-            </Button>
-          </div>
-        )}
-
         <h1 className="text-4xl font-bold mb-6 text-center">
           Waiter Dashboard
         </h1>
-        <div></div>
 
         <Link to="/paybill">
-          <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+          <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white mb-6">
             Pay Bill / Close Table
           </Button>
         </Link>
 
-        <form className="space-y-6">
-          <div></div>
-
+        <div className="space-y-4">
           <div>
-            <Label>Place Order at a New Table</Label>
-            <Select value={selectedTable} onValueChange={setSelectedTable}>
+            <Label>Select Table</Label>
+            <Select value={selectedTable} onValueChange={handleTableSelection}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a table" />
               </SelectTrigger>
@@ -210,6 +208,27 @@ function WaiterDashboard() {
             </Select>
           </div>
 
+          {existingOrders.length > 0 && (
+            <div>
+              <Label>Select Existing Order</Label>
+              <Select value={selectedOrderId} onValueChange={handleSelectOrder}>
+                <SelectTrigger>
+                  <SelectValue placeholder="(Or start a new one)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {existingOrders.map((order) => (
+                    <SelectItem key={order.id} value={order.id}>
+                      Order ID: {order.id.slice(0, 6)} — {order.Products.length}{' '}
+                      items
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        <form className="space-y-6 mt-6">
           <div>
             <Label>Category</Label>
             <Select
@@ -308,6 +327,18 @@ function WaiterDashboard() {
             </div>
           )}
         </form>
+
+        {orderItems.length > 0 && (
+          <div className="text-center mt-6">
+            <Button
+              variant="destructive"
+              onClick={handleSubmit}
+              className="px-6"
+            >
+              {selectedOrderId ? 'Update Order' : 'Submit Order'}
+            </Button>
+          </div>
+        )}
       </div>
     </>
   );

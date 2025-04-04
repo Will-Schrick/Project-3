@@ -10,21 +10,50 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import WaiterDashboard from './pages/WaiterDashboard';
 import KitchenDashboard from './pages/KitchenDashoard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="*" element={<NotFound />} /> {/* 404 Page */}
         <Route path="/menu" element={<Menu />} />
         <Route path="/about" element={<About />} />
         <Route path="/location" element={<Location />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/waiter" element={<WaiterDashboard />} />
-        <Route path="/kitchen" element={<KitchenDashboard />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/paybill" element={<PayBill />} />
-        <Route path="*" element={<NotFound />} /> {/* 404 Page */}
+        <Route
+          path="/waiter"
+          element={
+            <ProtectedRoute allowedRoles={['Waiter']}>
+              <WaiterDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/kitchen"
+          element={
+            <ProtectedRoute allowedRoles={['Chef']}>
+              <KitchenDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/paybill"
+          element={
+            <ProtectedRoute allowedRoles={['Waiter']}>
+              <PayBill />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
