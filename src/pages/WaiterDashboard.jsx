@@ -1,3 +1,5 @@
+// Updated WaiterDashboard.jsx with cart functionality and item edit/remove support
+
 import React, { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import { db } from '../firebase/firebaseConfig';
@@ -34,8 +36,8 @@ function WaiterDashboard() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [editIndex, setEditIndex] = useState(null);
 
-  // Fetch Tables and sort by Table Number (Lowest to Highest)
   useEffect(() => {
     const fetchTables = async () => {
       const snapshot = await getDocs(collection(db, 'Tables'));
@@ -43,13 +45,12 @@ function WaiterDashboard() {
         id: doc.id,
         ...doc.data(),
       }));
-      const sortedTables = tablesData.sort((a, b) => a.Number - b.Number); // Sort tables by number (ascending)
+      const sortedTables = tablesData.sort((a, b) => a.Number - b.Number);
       setTables(sortedTables);
     };
     fetchTables();
   }, []);
 
-  // Fetch Products
   useEffect(() => {
     const fetchProducts = async () => {
       const snapshot = await getDocs(collection(db, 'Products'));
@@ -62,7 +63,6 @@ function WaiterDashboard() {
     fetchProducts();
   }, []);
 
-  // Fetch Categories and sort by Category ID
   useEffect(() => {
     const fetchCategories = async () => {
       const snapshot = await getDocs(collection(db, 'Categories'));
@@ -70,13 +70,12 @@ function WaiterDashboard() {
         id: doc.id,
         ...doc.data(),
       }));
-      categoriesData.sort((a, b) => a.ID - b.ID); // Sort categories by ID
-      setCategories(categoriesData); // Set sorted categories
+      categoriesData.sort((a, b) => a.ID - b.ID);
+      setCategories(categoriesData);
     };
     fetchCategories();
   }, []);
 
-  // 🔄 Load existing orders for a table
   const handleTableSelection = async (tableId) => {
     setSelectedTable(tableId);
     setSelectedOrderId('');
@@ -86,12 +85,11 @@ function WaiterDashboard() {
     const snapshot = await getDocs(q);
     const activeOrders = snapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((order) => order.Status !== 'Paid'); // Only include orders that are not paid
+      .filter((order) => order.Status !== 'Paid');
 
     setExistingOrders(activeOrders);
   };
 
-  // 🧾 Load a selected order into the cart
   const handleSelectOrder = (orderId) => {
     const order = existingOrders.find((o) => o.id === orderId);
     if (!order) return;
@@ -100,7 +98,44 @@ function WaiterDashboard() {
     setOrderItems(order.Products);
   };
 
-  // Submit or update order
+  const handleAddItemToCart = () => {
+    if (!selectedProduct || quantity < 1) return;
+    const product = products.find((p) => p.id === selectedProduct);
+    const newItem = {
+      ProductID: product.id,
+      Name: product.Name,
+      Quantity: quantity,
+      Price: product.Price,
+      Notes: notes,
+      Prepared: false,
+    };
+
+    if (editIndex !== null) {
+      const updated = [...orderItems];
+      updated[editIndex] = newItem;
+      setOrderItems(updated);
+      setEditIndex(null);
+    } else {
+      setOrderItems((prev) => [...prev, newItem]);
+    }
+
+    setSelectedProduct('');
+    setQuantity(1);
+    setNotes('');
+  };
+
+  const handleEditItem = (index) => {
+    const item = orderItems[index];
+    setSelectedProduct(item.ProductID);
+    setQuantity(item.Quantity);
+    setNotes(item.Notes);
+    setEditIndex(index);
+  };
+
+  const handleRemoveItem = (index) => {
+    setOrderItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
     if (!selectedTable || orderItems.length === 0) return;
 
@@ -119,15 +154,13 @@ function WaiterDashboard() {
 
     try {
       if (selectedOrderId) {
-        // Update existing order
         await updateDoc(doc(db, 'Orders', selectedOrderId), orderData);
       } else {
-        // Create new order
         await addDoc(collection(db, 'Orders'), orderData);
         await updateDoc(doc(db, 'Tables', selectedTable), { IsOccupied: true });
       }
       setOrderItems([]);
-      handleTableSelection(selectedTable); // reload orders
+      handleTableSelection(selectedTable);
     } catch (error) {
       console.error('Error submitting order:', error);
     }
@@ -213,7 +246,7 @@ function WaiterDashboard() {
               <SelectContent>
                 {products
                   .filter((p) => p.Category === selectedCategory)
-                  .sort((a, b) => a.Name.localeCompare(b.Name)) // Sort products alphabetically
+                  .sort((a, b) => a.Name.localeCompare(b.Name))
                   .map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.Name} (€{p.Price})
@@ -244,8 +277,52 @@ function WaiterDashboard() {
 
           <Button
             type="button"
-            onClick={handleSubmit}
+            onClick={handleAddItemToCart}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+          >
+            {editIndex !== null ? 'Update Item' : 'Add Item to Cart'}
+          </Button>
+
+          {orderItems.length > 0 && (
+            <div className="border p-4 rounded bg-gray-100">
+              <h3 className="font-bold mb-2">Order Items</h3>
+              <ul className="space-y-2">
+                {orderItems.map((item, idx) => (
+                  <li key={idx} className="flex justify-between items-start">
+                    <div>
+                      {item.Name} × {item.Quantity}
+                      {item.Notes && (
+                        <p className="text-sm text-gray-600 italic">
+                          {item.Notes}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEditItem(idx)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRemoveItem(idx)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
           >
             {selectedOrderId ? 'Update Order' : 'Submit Order'}
           </Button>

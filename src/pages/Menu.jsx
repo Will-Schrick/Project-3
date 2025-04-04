@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { db } from '../firebase/firebaseConfig'; // Adjust the path if necessary
+import { db } from '../firebase/firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
-import Navbar from '../components/Navbar'; // Assuming you have a Navbar component
+import Navbar from '../components/Navbar';
 
 export default function Menu() {
   const [products, setProducts] = useState([]);

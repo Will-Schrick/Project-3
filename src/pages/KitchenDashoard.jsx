@@ -7,7 +7,6 @@ import {
   onSnapshot,
   updateDoc,
   doc,
-  getDoc,
 } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 
@@ -72,7 +71,7 @@ function KitchenDashboard() {
   };
 
   const filteredOrders = orders.filter((order) =>
-    showCompleted ? order.Status === 'Completed' : order.Status !== 'Completed'
+    showCompleted ? order.Status === 'Completed' : order.Status === 'Pending'
   );
 
   return (
@@ -115,7 +114,7 @@ function KitchenDashboard() {
                           </p>
                         )}
                       </div>
-                      {!product.Prepared && (
+                      {!product.Prepared && !showCompleted && (
                         <Button
                           size="sm"
                           onClick={() => markItemPrepared(order.id, index)}
@@ -129,7 +128,7 @@ function KitchenDashboard() {
                 </ul>
               </div>
 
-              {!order.Products.every((p) => p.Prepared) ? null : (
+              {!showCompleted && order.Products.every((p) => p.Prepared) && (
                 <Button
                   onClick={() => markOrderPrepared(order.id)}
                   className="mt-4 bg-orange-500 hover:bg-orange-600 text-white"
