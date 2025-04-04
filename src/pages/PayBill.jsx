@@ -163,7 +163,7 @@ function PayBill() {
         <div className="mt-6">
           <Link to="/waiter">
             <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
-              Pay Bill / Close Table
+              Go Back to Order Page
             </Button>
           </Link>
         </div>
