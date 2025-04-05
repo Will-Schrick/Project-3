@@ -18,6 +18,7 @@ Five Collections (Tables) Total
    
 A few of the Users:
 chef1@deliciousbites.com	"Chef1"	"Chef"
+
 chef2@deliciousbites.com	"Chef2"	"Chef"
 waiter1@deliciousbites.com	"Waiter1"	"Waiter"
 waiter2@deliciousbites.com	"Waiter2"	"Waiter
