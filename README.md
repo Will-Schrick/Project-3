@@ -17,15 +17,20 @@ Five Collections (Tables) Total
 5. Orders
    
 A few of the Users:
+
 chef1@deliciousbites.com	"Chef1"	"Chef"
 
 chef2@deliciousbites.com	"Chef2"	"Chef"
+
 waiter1@deliciousbites.com	"Waiter1"	"Waiter"
+
 waiter2@deliciousbites.com	"Waiter2"	"Waiter
+
 owner@deliciousbites.com	"Owner"	"Admin"
+
 manager1@deliciousbites.com	"Manager1"	"Admin"
 
-
+Routes:
 /login 
 this is a hidden router that is used for each role of person at the restarutant.
 
