@@ -31,10 +31,10 @@ owner@deliciousbites.com	"Owner"	"Admin"
 manager1@deliciousbites.com	"Manager1"	"Admin"
 
 Routes:
-/login 
-this is a hidden router that is used for each role of person at the restarutant.
 
-Admin= access to any page
+/login = This is a hidden router that is used for each role of person at the restarutant.
+
+Admin= Access to any page
 
 Waiter = /waiter  and /paybill
 
