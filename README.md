@@ -1,27 +1,37 @@
 Delicious Bites & Coffee 
+https://project-3-deliciousbites-and-coffee.onrender.com
 
 1. React + Vite
-2. Firebase
-3. Deploy with Render for the Front
-4. Tailwind
-5. Shadcn UI   https://ui.shadcn.com
-6. Leaflet (map rendering)  https://leafletjs.com/
+3. React react-dom and react-router-dom
+4. Firebase  (Firestore Database)
+5. Deploy with Render for the Front
+6. Tailwind
+7. Shadcn UI   https://ui.shadcn.com
+8. Leaflet (map rendering)  https://leafletjs.com/   (Google API wanted payment information)
+
+Five Collections (Tables) Total
+1. Users
+2. Tables
+3. Products
+4. Categories
+5. Orders
+   
+A few of the Users:
+chef1@deliciousbites.com	"Chef1"	"Chef"
+chef2@deliciousbites.com	"Chef2"	"Chef"
+waiter1@deliciousbites.com	"Waiter1"	"Waiter"
+waiter2@deliciousbites.com	"Waiter2"	"Waiter
+owner@deliciousbites.com	"Owner"	"Admin"
+manager1@deliciousbites.com	"Manager1"	"Admin"
 
 
-I have a hidden /login page that is used for:
+/login 
+this is a hidden router that is used for each role of person at the restarutant.
+
+Admin= access to any page
+Waiter = /waiter  and /paybill
+Chef = /kitchen
+Admin /admin (or any page)
 
 
 
-
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
