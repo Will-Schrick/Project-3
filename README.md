@@ -7,7 +7,7 @@ https://project-3-deliciousbites-and-coffee.onrender.com
 5. Deploy with Render for the Front
 6. Tailwind
 7. Shadcn UI   https://ui.shadcn.com
-8. Leaflet (map rendering)  https://leafletjs.com/   (Google API wanted payment information)
+8. Leaflet (map rendering)  https://leafletjs.com/   (Google API wanted payment etc. This is easy)
 
 Five Collections (Tables) Total
 1. Users
