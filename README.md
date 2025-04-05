@@ -1,4 +1,4 @@
-Delicious Bites & Coffee 
+**Delicious Bites & Coffee** 
 https://project-3-deliciousbites-and-coffee.onrender.com
 
 1. React + Vite
@@ -34,7 +34,7 @@ Password123
 
 Routes:
 
-/login = This is a hidden router that is used for each role of person at the restarutant.
+**/login** = This is a hidden router that is used for each role of person at the restarutant.
 
 Admin= /admin Access to any page
 
@@ -42,6 +42,14 @@ Waiter = /waiter  and /paybill
 
 Chef = /kitchen
 
+
+Other routes:
+/menu
+/about
+/location
+* = 404 Page
+
+Thank you =)
 
 
 
