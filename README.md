@@ -1,3 +1,18 @@
+Delicious Bites & Coffee 
+
+1. React + Vite
+2. Firebase
+3. Deploy with Render for the Front
+4. Tailwind
+5. Shadcn UI   https://ui.shadcn.com
+6. Leaflet (map rendering)  https://leafletjs.com/
+
+
+I have a hidden /login page that is used for:
+
+
+
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
