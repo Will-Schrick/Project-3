@@ -34,13 +34,12 @@ Routes:
 
 /login = This is a hidden router that is used for each role of person at the restarutant.
 
-Admin= Access to any page
+Admin= /admin Access to any page
 
 Waiter = /waiter  and /paybill
 
 Chef = /kitchen
 
-Admin /admin (or any page)
 
 
 
