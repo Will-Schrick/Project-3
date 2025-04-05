@@ -16,7 +16,7 @@ Five Collections (Tables) Total
 4. Categories
 5. Orders
    
-A few of the Users:
+Three User roles - Chef, Waiter, Admin. A few of the Users:
 
 chef1@deliciousbites.com	"Chef1"	"Chef"
 
@@ -29,6 +29,8 @@ waiter2@deliciousbites.com	"Waiter2"	"Waiter
 owner@deliciousbites.com	"Owner"	"Admin"
 
 manager1@deliciousbites.com	"Manager1"	"Admin"
+
+Password123
 
 Routes:
 
